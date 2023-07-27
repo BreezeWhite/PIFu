@@ -1,14 +1,13 @@
 import sys
 import os
+from pathlib import Path
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 ROOT_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-import time
 import json
 import numpy as np
 import torch
-from torch.utils.data import DataLoader
 
 from lib.options import BaseOptions
 from lib.mesh_util import *
@@ -108,11 +107,15 @@ class Evaluator:
 if __name__ == '__main__':
     evaluator = Evaluator(opt)
 
-    test_images = glob.glob(os.path.join(opt.test_folder_path, '*'))
-    test_images = [f for f in test_images if ('png' in f or 'jpg' in f) and (not 'mask' in f)]
-    test_masks = [f[:-4]+'_mask.png' for f in test_images]
+    img_folder = Path(opt.test_folder_path)
+    test_images = [
+        f
+        for f in img_folder.glob('*')
+        if f.suffix.lower() in ('.jpg', '.png') and (not 'mask' in str(f))
+    ]
+    test_masks = [str(f)[:-4]+'_mask.png' for f in test_images]
 
-    print("num; ", len(test_masks))
+    print("num: ", len(test_masks))
 
     for image_path, mask_path in tqdm.tqdm(zip(test_images, test_masks)):
         try:
