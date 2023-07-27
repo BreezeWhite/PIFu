@@ -32,9 +32,12 @@ from pytorch3d.renderer import (
 
 def set_renderer():
     # Setup
-    device = 'cuda' if  torch.cuda.is_available() else 'cpu'
-    # torch.cuda.set_device(device)
+    device = 'cpu'
+    if torch.cuda.is_available():
+        torch.cuda.set_device(0)
+        device = 'cuda'
 
+    torch.cuda.device_count
     # Initialize an OpenGL perspective camera.
     R, T = look_at_view_transform(2.0, 0, 180) 
     cameras = OpenGLOrthographicCameras(device=device, R=R, T=T)
@@ -76,8 +79,10 @@ def get_verts_rgb_colors(obj_path):
 
 def generate_video_from_obj(obj_path, video_path, renderer):
     # Setup
-    device = 'cuda' if  torch.cuda.is_available() else 'cpu'
-    # torch.cuda.set_device(device)
+    device = 'cpu'
+    if torch.cuda.is_available():
+        torch.cuda.set_device(0)
+        device = 'cuda'
 
     # Load obj file
     verts_rgb_colors = get_verts_rgb_colors(obj_path)
