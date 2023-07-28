@@ -60,6 +60,21 @@ class Evaluator:
         self.netG = netG
         self.netC = netC
 
+    def crop_image(self, image_arr, mask_arr):
+        idy, idx = np.where(mask_arr > 30)
+        min_y, max_y, min_x, max_x = np.min(idy), np.max(idy), np.min(idx), np.max(idx)
+        diff_y = max_y - min_y
+        diff_x = max_x - min_x
+        diff = max(diff_y, diff_x)
+        radius = int(diff * 1.1 // 2)
+        y_center = (min_y + max_y) // 2
+        x_center = (min_x + max_x) // 2
+        start_y = max(0, y_center - radius)
+        end_y = min(len(mask_arr), y_center + radius)
+        start_x = max(0, x_center - radius)
+        end_x = min(mask_arr.shape[1], x_center + radius)
+        return image_arr[start_y:end_y, start_x:end_x], mask_arr[start_y:end_y, start_x:end_x]
+
     def load_image(self, image_path, mask_path):
         # Name
         img_name = os.path.splitext(os.path.basename(image_path))[0]
@@ -69,12 +84,21 @@ class Evaluator:
         projection_matrix = np.identity(4)
         projection_matrix[1, 1] = -1
         calib = torch.Tensor(projection_matrix).float()
-        # Mask
-        mask = Image.open(mask_path).convert('L')
+
+        # Load image & mask
+        mask = np.array(Image.open(mask_path).convert('L'))
+        image = np.array(Image.open(image_path).convert('RGB'))
+
+        # Crop image & mask
+        image, mask = self.crop_image(image, mask)
+
+        # Convert numpy array back to Image
+        mask = Image.fromarray(mask)
+        image = Image.fromarray(image)
+
+        # Transform
         mask = transforms.Resize(self.load_size)(mask)
         mask = transforms.ToTensor()(mask).float()
-        # image
-        image = Image.open(image_path).convert('RGB')
         image = self.to_tensor(image)
         image = mask.expand_as(image) * image
         return {
@@ -118,9 +142,6 @@ if __name__ == '__main__':
     print("num: ", len(test_masks))
 
     for image_path, mask_path in tqdm.tqdm(zip(test_images, test_masks)):
-        try:
-            print(image_path, mask_path)
-            data = evaluator.load_image(image_path, mask_path)
-            evaluator.eval(data, True)
-        except Exception as e:
-           print("error:", e.args)
+        print(image_path, mask_path)
+        data = evaluator.load_image(image_path, mask_path)
+        evaluator.eval(data, True)
