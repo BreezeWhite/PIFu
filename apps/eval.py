@@ -63,17 +63,27 @@ class Evaluator:
     def crop_image(self, image_arr, mask_arr):
         idy, idx = np.where(mask_arr > 30)
         min_y, max_y, min_x, max_x = np.min(idy), np.max(idy), np.min(idx), np.max(idx)
+        sub_img = image_arr[min_y:max_y, min_x:max_x]
+        sub_mask = mask_arr[min_y:max_y, min_x:max_x]
+
         diff_y = max_y - min_y
         diff_x = max_x - min_x
         diff = max(diff_y, diff_x)
         radius = int(diff * 1.1 // 2)
+
+        new_img = np.zeros((radius * 2, radius * 2, 3), dtype=np.uint8)
+        new_mask = np.zeros((radius * 2, radius * 2), dtype=np.uint8)
+
         y_center = (min_y + max_y) // 2
         x_center = (min_x + max_x) // 2
-        start_y = max(0, y_center - radius)
-        end_y = min(len(mask_arr), y_center + radius)
-        start_x = max(0, x_center - radius)
-        end_x = min(mask_arr.shape[1], x_center + radius)
-        return image_arr[start_y:end_y, start_x:end_x], mask_arr[start_y:end_y, start_x:end_x]
+        paste_start_y = radius - (y_center - min_y)
+        paste_start_x = radius - (x_center - min_x)
+
+        slice_idx = np.s_[paste_start_y:paste_start_y + diff_y, paste_start_x:paste_start_x + diff_x]
+        new_img[slice_idx] = sub_img
+        new_mask[slice_idx] = sub_mask
+
+        return new_img, new_mask
 
     def load_image(self, image_path, mask_path):
         # Name
@@ -135,7 +145,7 @@ if __name__ == '__main__':
     test_images = [
         f
         for f in img_folder.glob('*')
-        if f.suffix.lower() in ('.jpg', '.png') and (not 'mask' in str(f))
+        if f.suffix.lower() in ('.jpg', 'jpeg', '.png') and (not 'mask' in str(f))
     ]
     test_masks = [str(f)[:-4]+'_mask.png' for f in test_images]
 
